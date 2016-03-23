@@ -49,10 +49,16 @@
 	
 	var KeyListener = __webpack_require__(2);
 	var Organ = __webpack_require__(187);
+	var JukeBox = __webpack_require__(192);
 	
 	$(function () {
 		KeyListener.attachEvents();
-		ReactDOM.render(React.createElement(Organ, null), $('#content')[0]);
+		ReactDOM.render(React.createElement(
+			'div',
+			null,
+			React.createElement(Organ, null),
+			React.createElement(JukeBox, null)
+		), $('#content')[0]);
 	});
 
 /***/ },
@@ -26705,6 +26711,7 @@
 	var Track = __webpack_require__(189);
 	var KeyStore = __webpack_require__(3);
 	var KeyActions = __webpack_require__(28);
+	var TrackActions = __webpack_require__(190);
 	
 	var Recorder = React.createClass({
 		displayName: 'Recorder',
@@ -26786,6 +26793,25 @@
 			});
 		},
 	
+		handleNameChange: function (e) {
+			e.stopPropagation();
+			this.state.track.name = e.target.value;
+			this.setState({
+				track: this.state.track
+			});
+		},
+	
+		handleSaveTrack: function (e) {
+			if (this.state.isRecording) return;
+	
+			TrackActions.trackReceived(this.state.track);
+			this.setState({
+				track: new Track({
+					name: ""
+				})
+			});
+		},
+	
 		render: function () {
 			return React.createElement(
 				'div',
@@ -26799,6 +26825,13 @@
 					'button',
 					{ onClick: this.handlePlay },
 					this.state.isPlaying ? 'Stop' : 'Play'
+				),
+				React.createElement('br', null),
+				React.createElement('input', { type: 'text', value: this.state.track.name, onChange: this.handleNameChange }),
+				React.createElement(
+					'button',
+					{ onClick: this.handleSaveTrack },
+					'Save Track'
 				)
 			);
 		}
@@ -26833,6 +26866,214 @@
 	};
 	
 	module.exports = Track;
+
+/***/ },
+/* 190 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var TrackConstants = __webpack_require__(191);
+	var AppDispatcher = __webpack_require__(23);
+	
+	var TrackActions = {
+		trackReceived: function (track) {
+			AppDispatcher.dispatch({
+				actionType: TrackConstants.TRACK_RECEIVED,
+				track: track
+			});
+		},
+	
+		trackRemoved: function (name) {
+			AppDispatcher.dispatch({
+				actionType: TrackConstants.TRACK_REMOVED,
+				name: name
+			});
+		}
+	};
+	
+	module.exports = TrackActions;
+
+/***/ },
+/* 191 */
+/***/ function(module, exports) {
+
+	var TrackConstants = {
+		TRACK_RECEIVED: "TRACK_RECEIVED",
+		TRACK_REMOVED: "TRACK_REMOVED"
+	};
+	
+	module.exports = TrackConstants;
+
+/***/ },
+/* 192 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var React = __webpack_require__(29);
+	var TrackStore = __webpack_require__(193);
+	var TrackPlayer = __webpack_require__(194);
+	
+	var JukeBox = React.createClass({
+		displayName: 'JukeBox',
+	
+		getInitialState: function () {
+			return { tracks: TrackStore.all() };
+		},
+	
+		componentDidMount: function () {
+			this.changeToken = TrackStore.addListener(this.change);
+		},
+	
+		componentWillUnmount: function () {
+			this.changeToken.remove();
+		},
+	
+		change: function () {
+			this.setState({
+				tracks: TrackStore.all()
+			});
+		},
+	
+		render: function () {
+			var tracks = this.state.tracks.map(function (track) {
+				return React.createElement(TrackPlayer, { key: track.name, track: track });
+			});
+			return React.createElement(
+				'div',
+				null,
+				React.createElement(
+					'h3',
+					null,
+					'JukeBox'
+				),
+				tracks
+			);
+		}
+	});
+	
+	module.exports = JukeBox;
+
+/***/ },
+/* 193 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var Store = __webpack_require__(4).Store;
+	var AppDispatcher = __webpack_require__(23);
+	var TrackConstants = __webpack_require__(191);
+	
+	var TrackStore = new Store(AppDispatcher);
+	
+	var _tracks = {};
+	
+	TrackStore.all = function () {
+		var tracks = [];
+		for (var id in _tracks) {
+			tracks.push(_tracks[id]);
+		}
+		return tracks;
+	};
+	
+	TrackStore.__onDispatch = function (payload) {
+		switch (payload.actionType) {
+			case TrackConstants.TRACK_RECEIVED:
+				_tracks[payload.track.name] = payload.track;
+				TrackStore.__emitChange();
+				break;
+			case TrackConstants.TRACK_REMOVED:
+				delete _tracks[payload.name];
+				TrackStore.__emitChange();
+				break;
+		}
+	};
+	
+	module.exports = TrackStore;
+
+/***/ },
+/* 194 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var React = __webpack_require__(29);
+	var KeyActions = __webpack_require__(28);
+	var TrackActions = __webpack_require__(190);
+	
+	var TrackPlayer = React.createClass({
+		displayName: 'TrackPlayer',
+	
+		getInitialState: function () {
+			return {
+				isPlaying: false
+			};
+		},
+	
+		componentWillUnmount: function () {
+			clearInterval(this.intervalId);
+			KeyActions.setKeys([]);
+		},
+	
+		checkNotes: function () {
+			var roll = this.props.track.roll;
+			// we're done playing the track
+			if (this.currentNote >= roll.length) {
+				this.setState({
+					isPlaying: false
+				});
+				return;
+			}
+	
+			var timeElapsed = Date.now() - this.playBackStartTime;
+			for (var i = this.currentNote; i < roll.length; i++) {
+				var notes = roll[i];
+				if (notes.timeSlice > timeElapsed) {
+					break;
+				}
+				KeyActions.setKeys(notes.notes);
+				this.currentNote++;
+			}
+		},
+	
+		handlePlay: function (e) {
+	
+			if (this.state.isPlaying) {
+				this.currentNote = this.props.track.roll.length + 1;
+				KeyActions.setKeys([]);
+				clearInterval(this.intervalId);
+			} else {
+				this.currentNote = 0;
+				this.playBackStartTime = new Date();
+				this.intervalId = setInterval(this.checkNotes, 10);
+			}
+	
+			this.setState({
+				isPlaying: !this.state.isPlaying
+			});
+		},
+	
+		handleDelete: function (e) {
+			TrackActions.trackRemoved(this.props.track.name);
+		},
+	
+		render: function () {
+			return React.createElement(
+				'div',
+				null,
+				React.createElement(
+					'p',
+					null,
+					this.props.track.name
+				),
+				React.createElement(
+					'button',
+					{ onClick: this.handlePlay },
+					this.state.isPlaying ? 'Stop' : 'Play'
+				),
+				React.createElement(
+					'button',
+					{ onClick: this.handleDelete },
+					'Delete'
+				)
+			);
+		}
+	});
+	
+	module.exports = TrackPlayer;
 
 /***/ }
 /******/ ]);

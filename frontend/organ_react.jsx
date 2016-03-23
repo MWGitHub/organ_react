@@ -3,9 +3,14 @@ var ReactDOM = require('react-dom');
 
 var KeyListener = require('./util/keylistener');
 var Organ = require('./components/organ');
-
+var JukeBox = require('./components/jukebox');
 
 $(function () {
 	KeyListener.attachEvents();
-	ReactDOM.render(<Organ />, $('#content')[0]);
+	ReactDOM.render((
+		<div>
+			<Organ />
+			<JukeBox />
+		</div>
+	), $('#content')[0]);
 });

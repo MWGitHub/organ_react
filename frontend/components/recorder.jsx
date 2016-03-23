@@ -2,6 +2,7 @@ var React = require('react');
 var Track = require('../util/track');
 var KeyStore = require('../stores/key_store');
 var KeyActions = require('../actions/key_actions');
+var TrackActions = require('../actions/track_actions');
 
 var Recorder = React.createClass({
 
@@ -81,6 +82,25 @@ var Recorder = React.createClass({
 		});
 	},
 
+	handleNameChange: function (e) {
+		e.stopPropagation();
+		this.state.track.name = e.target.value;
+		this.setState({
+			track: this.state.track
+		});
+	},
+
+	handleSaveTrack: function (e) {
+		if (this.state.isRecording) return;
+
+		TrackActions.trackReceived(this.state.track);
+		this.setState({
+			track: new Track({
+				name: ""
+			})
+		});
+	},
+
 	render: function () {
 		return (
 			<div>
@@ -90,6 +110,9 @@ var Recorder = React.createClass({
 				<button onClick={this.handlePlay}>
 					{this.state.isPlaying ? 'Stop' : 'Play'}
 				</button>
+				<br />
+				<input type="text" value={this.state.track.name} onChange={this.handleNameChange}/>
+				<button onClick={this.handleSaveTrack}>Save Track</button>
 			</div>
 		);
 	}
