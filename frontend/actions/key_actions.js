@@ -14,6 +14,13 @@ var KeyActions = {
 			actionType: KeyConstants.KEY_REMOVED,
 			noteName: noteName
 		});
+	},
+
+	setKeys: function (notes) {
+		AppDispatcher.dispatch({
+			actionType: KeyConstants.SET_KEYS,
+			notes: notes
+		});
 	}
 };
 

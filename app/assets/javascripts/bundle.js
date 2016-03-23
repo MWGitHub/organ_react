@@ -182,6 +182,10 @@
 				removeNote(payload.noteName);
 				KeyStore.__emitChange();
 				break;
+			case KeyConstants.SET_KEYS:
+				_keys = payload.notes.slice();
+				KeyStore.__emitChange();
+				break;
 		}
 	};
 	
@@ -7068,7 +7072,8 @@
 
 	var KeyConstants = {
 		KEY_RECEIVED: 'KEY_RECEIVED',
-		KEY_REMOVED: 'KEY_REMOVED'
+		KEY_REMOVED: 'KEY_REMOVED',
+		SET_KEYS: 'SET_KEYS'
 	};
 	
 	module.exports = KeyConstants;
@@ -7092,6 +7097,13 @@
 			AppDispatcher.dispatch({
 				actionType: KeyConstants.KEY_REMOVED,
 				noteName: noteName
+			});
+		},
+	
+		setKeys: function (notes) {
+			AppDispatcher.dispatch({
+				actionType: KeyConstants.SET_KEYS,
+				notes: notes
 			});
 		}
 	};
@@ -26663,6 +26675,7 @@
 	var React = __webpack_require__(29);
 	var Key = __webpack_require__(186);
 	var ToneConstants = __webpack_require__(26);
+	var Recorder = __webpack_require__(188);
 	
 	var Organ = React.createClass({
 		displayName: 'Organ',
@@ -26676,12 +26689,150 @@
 			return React.createElement(
 				'div',
 				null,
-				keys
+				keys,
+				React.createElement(Recorder, null)
 			);
 		}
 	});
 	
 	module.exports = Organ;
+
+/***/ },
+/* 188 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var React = __webpack_require__(29);
+	var Track = __webpack_require__(189);
+	var KeyStore = __webpack_require__(3);
+	var KeyActions = __webpack_require__(28);
+	
+	var Recorder = React.createClass({
+		displayName: 'Recorder',
+	
+	
+		getInitialState: function () {
+			return {
+				isRecording: false,
+				track: new Track({ name: "" }),
+				isPlaying: false
+			};
+		},
+	
+		componentDidMount: function () {
+			this.changeToken = KeyStore.addListener(this.change);
+		},
+	
+		componentWillUnmount: function () {
+			this.changeToken.remove();
+			clearInterval(this.intervalId);
+			KeyActions.setKeys([]);
+		},
+	
+		change: function () {
+			if (!this.state.isRecording) return;
+	
+			this.state.track.addNotes(KeyStore.all());
+		},
+	
+		handleRecord: function (e) {
+			if (this.state.isPlaying) return;
+	
+			if (this.state.isRecording) {
+				this.state.track.stopRecording();
+			} else {
+				this.state.track.startRecording();
+			}
+			this.setState({
+				isRecording: !this.state.isRecording
+			});
+		},
+	
+		checkNotes: function () {
+			var roll = this.state.track.roll;
+			// we're done playing the track
+			if (this.currentNote >= roll.length) {
+				this.setState({
+					isPlaying: false
+				});
+				return;
+			}
+	
+			var timeElapsed = Date.now() - this.playBackStartTime;
+			for (var i = this.currentNote; i < roll.length; i++) {
+				var notes = roll[i];
+				if (notes.timeSlice > timeElapsed) {
+					break;
+				}
+				KeyActions.setKeys(notes.notes);
+				this.currentNote++;
+			}
+		},
+	
+		handlePlay: function (e) {
+			if (this.state.isRecording) return;
+	
+			if (this.state.isPlaying) {
+				this.currentNote = this.state.track.roll.length + 1;
+				KeyActions.setKeys([]);
+				clearInterval(this.intervalId);
+			} else {
+				this.currentNote = 0;
+				this.playBackStartTime = new Date();
+				this.intervalId = setInterval(this.checkNotes, 10);
+			}
+	
+			this.setState({
+				isPlaying: !this.state.isPlaying
+			});
+		},
+	
+		render: function () {
+			return React.createElement(
+				'div',
+				null,
+				React.createElement(
+					'button',
+					{ onClick: this.handleRecord },
+					this.state.isRecording ? 'Stop Recording' : 'Start Record'
+				),
+				React.createElement(
+					'button',
+					{ onClick: this.handlePlay },
+					this.state.isPlaying ? 'Stop' : 'Play'
+				)
+			);
+		}
+	});
+	
+	module.exports = Recorder;
+
+/***/ },
+/* 189 */
+/***/ function(module, exports) {
+
+	var Track = function (attributes) {
+		this.name = attributes.name;
+		this.roll = attributes.roll || [];
+		this.currentTime = new Date();
+	};
+	
+	Track.prototype.startRecording = function () {
+		this.roll = [];
+		this.currentTime = new Date();
+	};
+	
+	Track.prototype.addNotes = function (notes) {
+		this.roll.push({
+			timeSlice: new Date() - this.currentTime,
+			notes: notes
+		});
+	};
+	
+	Track.prototype.stopRecording = function () {
+		this.addNotes([]);
+	};
+	
+	module.exports = Track;
 
 /***/ }
 /******/ ]);

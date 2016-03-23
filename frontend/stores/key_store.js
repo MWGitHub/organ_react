@@ -39,6 +39,10 @@ KeyStore.__onDispatch = function (payload) {
 			removeNote(payload.noteName);
 			KeyStore.__emitChange();
 			break;
+		case KeyConstants.SET_KEYS:
+			_keys = payload.notes.slice();
+			KeyStore.__emitChange();
+			break;
 	}
 };
 
