@@ -1,7 +1,11 @@
-var Note = require("./util/note");
+var React = require('react');
+var ReactDOM = require('react-dom');
+
 var KeyListener = require('./util/keylistener');
-var KeyStore = require('./stores/key_store');
+var Organ = require('./components/organ');
+
 
 $(function () {
 	KeyListener.attachEvents();
+	ReactDOM.render(<Organ />, $('#content')[0]);
 });

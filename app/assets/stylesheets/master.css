@@ -1,0 +1,15 @@
+.key {
+	padding: 20px;
+	background-color: red;
+	color: white;
+	font-size: 16px;
+	width: 50px;
+	height: 200px;
+	float: left;
+	text-align: center;
+	border: 1px solid black;
+}
+
+.playing {
+	background-color: grey;
+}

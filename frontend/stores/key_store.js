@@ -24,17 +24,22 @@ KeyStore.all = function () {
 	return _keys.slice();
 };
 
+KeyStore.isPlaying = function (note) {
+	var index = _keys.indexOf(note);
+	return index >= 0;
+};
+
 KeyStore.__onDispatch = function (payload) {
 	switch (payload.actionType) {
 		case KeyConstants.KEY_RECEIVED:
 			addNote(payload.noteName);
-			console.log(payload.noteName);
+			KeyStore.__emitChange();
 			break;
 		case KeyConstants.KEY_REMOVED:
 			removeNote(payload.noteName);
-			console.log(payload.noteName);
+			KeyStore.__emitChange();
 			break;
 	}
 };
 
-module.exports = KeyStore; 
+module.exports = KeyStore;
